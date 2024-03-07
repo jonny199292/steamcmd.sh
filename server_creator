@@ -23,6 +23,22 @@ if ! command -v sudo &>/dev/null; then
     apt install -y sudo
 fi
 
+# Prompt for SSH installation
+read -p "Do you want to install SSH? [Y/n]: " INSTALL_SSH
+INSTALL_SSH=${INSTALL_SSH:-Y}
+
+if [[ $INSTALL_SSH =~ ^[Yy]$ ]]; then
+    apt install -y openssh-server
+fi
+
+# Prompt for FTP installation
+read -p "Do you want to install FTP? [Y/n]: " INSTALL_FTP
+INSTALL_FTP=${INSTALL_FTP:-Y}
+
+if [[ $INSTALL_FTP =~ ^[Yy]$ ]]; then
+    apt install -y vsftpd
+fi
+
 # Prompt for steam user password
 read -s -p "Enter password for steam user: " STEAM_PASSWORD
 echo
@@ -31,8 +47,9 @@ echo
 useradd -m steam
 echo "$STEAM_PASSWORD" | passwd steam --stdin
 
-# Default App ID for Don't Starve Together
-APP_ID=322330
+# Prompt for Don't Starve Together App ID
+read -p "Enter Don't Starve Together App ID [default: 322330]: " APP_ID
+APP_ID=${APP_ID:-322330}
 
 # Fetch game name
 GAME_NAME=$(fetch_game_name "$APP_ID")
