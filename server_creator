@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Function to fetch the game name from the Steam store
+fetch_game_name() {
+    APP_ID="$1"
+    GAME_NAME=$(curl -s "https://store.steampowered.com/api/appdetails?appids=$APP_ID" | jq -r ".\"$APP_ID\".data.name")
+    echo "$GAME_NAME"
+}
+
+# Update and upgrade system
+apt update
+apt dist-upgrade -y
+
+# Install required packages
+apt install -y software-properties-common
+apt-add-repository non-free
+dpkg --add-architecture i386
+apt update
+apt install -y steamcmd
+
+# Install sudo if not already installed
+if ! command -v sudo &>/dev/null; then
+    apt install -y sudo
+fi
+
+# Prompt for steam user password
+read -s -p "Enter password for steam user: " STEAM_PASSWORD
+echo
+
+# Create steam user and set password
+useradd -m steam
+echo "$STEAM_PASSWORD" | passwd steam --stdin
+
+# Default App ID for Don't Starve Together
+APP_ID=322330
+
+# Fetch game name
+GAME_NAME=$(fetch_game_name "$APP_ID")
+
+# Set default installation location
+DEFAULT_LOCATION="/home/steam/steamapps/$GAME_NAME"
+
+# Prompt for DST installation location
+read -p "Enter Don't Starve Together installation directory [default: $DEFAULT_LOCATION]: " DST_LOCATION
+DST_LOCATION=${DST_LOCATION:-$DEFAULT_LOCATION}
+
+# Switch to steam user and set up SteamCMD
+sudo -u steam -s <<EOF
+cd /home/steam
+/usr/games/steamcmd +login anonymous +app_update $APP_ID validate +quit
+EOF
