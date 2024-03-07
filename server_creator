@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# Install zenity if not already installed
+if ! command -v zenity &>/dev/null; then
+    sudo apt update
+    sudo apt install -y zenity || { echo "Error: Failed to install Zenity"; exit 1; }
+fi
+
+# Function to fetch the game name from SteamDB
+fetch_game_name() {
+    APP_ID="$1"
+    GAME_NAME=$(curl -s "https://steamdb.info/app/$APP_ID/" | grep -oP '<title>\K[^<]+')
+    echo "$GAME_NAME"
+}
+
 # Prompt for password for running the script as root
 ROOT_PASSWORD=$(zenity --password --title="Root Password" --text="Enter your password to run the script as root:")
 [[ -z "$ROOT_PASSWORD" ]] && { zenity --error --text="Error: Password not provided"; exit 1; }
@@ -7,18 +20,11 @@ ROOT_PASSWORD=$(zenity --password --title="Root Password" --text="Enter your pas
 # Validate root password by running a sudo command
 echo "$ROOT_PASSWORD" | sudo -S echo &>/dev/null || { zenity --error --text="Error: Incorrect root password"; exit 1; }
 
-# Function to fetch the game name from the Steam store
-fetch_game_name() {
-    APP_ID="$1"
-    GAME_NAME=$(curl -s "https://store.steampowered.com/api/appdetails?appids=$APP_ID" | jq -r ".\"$APP_ID\".data.name")
-    echo "$GAME_NAME"
-}
-
 # Update and upgrade system
 echo "$ROOT_PASSWORD" | sudo -S apt update && echo "$ROOT_PASSWORD" | sudo -S apt dist-upgrade -y || { zenity --error --text="Error: Failed to update and upgrade the system"; exit 1; }
 
 # Install required packages
-echo "$ROOT_PASSWORD" | sudo -S apt install -y software-properties-common jq openssh-server vsftpd expect zenity || { zenity --error --text="Error: Failed to install required packages"; exit 1; }
+echo "$ROOT_PASSWORD" | sudo -S apt install -y software-properties-common jq openssh-server vsftpd expect || { zenity --error --text="Error: Failed to install required packages"; exit 1; }
 
 # Install sudo if not already installed
 if ! command -v sudo &>/dev/null; then
