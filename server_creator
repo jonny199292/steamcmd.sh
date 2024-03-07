@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# Install zenity if not already installed
-if ! command -v zenity &>/dev/null; then
-    sudo apt update
-    sudo apt install -y zenity || { echo "Error: Failed to install Zenity"; exit 1; }
-fi
 
 # Function to fetch the game name from SteamDB
 fetch_game_name() {
