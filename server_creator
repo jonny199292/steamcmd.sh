@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Prompt for password for running the script as root
+ROOT_PASSWORD=$(zenity --password --title="Root Password" --text="Enter your password to run the script as root:")
+[[ -z "$ROOT_PASSWORD" ]] && { zenity --error --text="Error: Password not provided"; exit 1; }
+
+# Validate root password by running a sudo command
+echo "$ROOT_PASSWORD" | sudo -S echo &>/dev/null || { zenity --error --text="Error: Incorrect root password"; exit 1; }
+
 # Function to fetch the game name from the Steam store
 fetch_game_name() {
     APP_ID="$1"
@@ -8,48 +15,48 @@ fetch_game_name() {
 }
 
 # Update and upgrade system
-apt update && apt dist-upgrade -y || { echo "Error: Failed to update and upgrade the system"; exit 1; }
+echo "$ROOT_PASSWORD" | sudo -S apt update && echo "$ROOT_PASSWORD" | sudo -S apt dist-upgrade -y || { zenity --error --text="Error: Failed to update and upgrade the system"; exit 1; }
 
 # Install required packages
-apt install -y software-properties-common jq openssh-server vsftpd expect || { echo "Error: Failed to install required packages"; exit 1; }
+echo "$ROOT_PASSWORD" | sudo -S apt install -y software-properties-common jq openssh-server vsftpd expect zenity || { zenity --error --text="Error: Failed to install required packages"; exit 1; }
 
 # Install sudo if not already installed
 if ! command -v sudo &>/dev/null; then
-    apt install -y sudo || { echo "Error: Failed to install sudo"; exit 1; }
+    echo "$ROOT_PASSWORD" | sudo -S apt install -y sudo || { zenity --error --text="Error: Failed to install sudo"; exit 1; }
 fi
 
 # Check if the 'steam' user exists
 if ! id -u steam &>/dev/null; then
     # Prompt for steam user password
-    read -s -p "Enter password for steam user: " STEAM_PASSWORD
-    echo
+    STEAM_PASSWORD=$(zenity --password --title="Steam User Password" --text="Enter password for steam user:")
+    [[ -z "$STEAM_PASSWORD" ]] && { zenity --error --text="Error: Password not provided"; exit 1; }
 
     # Create steam user and set password
-    useradd -m steam || { echo "Error: Failed to create steam user"; exit 1; }
-    echo "steam:$STEAM_PASSWORD" | chpasswd || { echo "Error: Failed to set password for steam user"; exit 1; }
+    echo "$ROOT_PASSWORD" | sudo -S useradd -m steam || { zenity --error --text="Error: Failed to create steam user"; exit 1; }
+    echo "steam:$STEAM_PASSWORD" | sudo chpasswd || { zenity --error --text="Error: Failed to set password for steam user"; exit 1; }
 fi
 
 # Set default installation location
 DEFAULT_LOCATION="/home/steam/steamapps"
 
 # Prompt for Don't Starve Together App ID
-read -p "Enter Don't Starve Together App ID [default: 322330]: " APP_ID
+APP_ID=$(zenity --entry --title="Don't Starve Together App ID" --text="Enter Don't Starve Together App ID [default: 322330]:")
 APP_ID=${APP_ID:-322330}
 
 # Fetch game name
 GAME_NAME=$(fetch_game_name "$APP_ID")
 
 # Prompt for DST installation location
-read -p "Enter Don't Starve Together installation directory [default: $DEFAULT_LOCATION/$GAME_NAME]: " DST_LOCATION
+DST_LOCATION=$(zenity --entry --title="Installation Directory" --text="Enter Don't Starve Together installation directory [default: $DEFAULT_LOCATION/$GAME_NAME]:")
 DST_LOCATION=${DST_LOCATION:-"$DEFAULT_LOCATION/$GAME_NAME"}
 
 # Run Steam commands as steam user with provided password
-su -c "expect -c '
-spawn /usr/games/steamcmd +login anonymous +force_install_dir \"$DST_LOCATION\" +app_update $APP_ID validate +quit
+expect -c "
+spawn echo \"$ROOT_PASSWORD\" | sudo -S -u steam /usr/games/steamcmd +login anonymous +force_install_dir \"$DST_LOCATION\" +app_update $APP_ID validate +quit
 expect \"Password:\"
 send \"$STEAM_PASSWORD\r\"
 interact
-'" steam" || { echo "Error: Failed to set up SteamCMD"; exit 1; }
+" || { zenity --error --text="Error: Failed to set up SteamCMD"; exit 1; }
 
 # Report success
-echo "Script execution completed successfully."
+zenity --info --text="Script execution completed successfully."
