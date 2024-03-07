@@ -1,37 +1,14 @@
 #!/bin/bash
 
-# Function to display animated loading
-function show_loading {
-    local i sp n
-    sp='/-\|'
-    n=${#sp}
-    printf ' '
-    while true; do
-        printf '%s' "${sp:i++%n:1}"
-        sleep 0.1
-        printf '\b'
-    done
-}
-
-# Function to stop animated loading
-function stop_loading {
-    kill "$1" 2>/dev/null
-    printf '\b \n'
-}
-
 # Function to install necessary dependencies
 function install_dependencies {
     echo "Installing necessary dependencies..."
-    show_loading &
-    local loading_pid=$!
-    apt-get update &>/dev/null
-    apt-get install -y curl sudo &>/dev/null
-    stop_loading $loading_pid
-    echo "Dependencies installed successfully."
+    apt-get update
+    apt-get install -y curl sudo
 }
 
-# Function to create LXC container with TurnKey Core Debian 12 and install SteamCMD
-function create_container_with_turnkey_core_and_steamcmd {
+# Function to create LXC container with custom template and install dependencies
+function create_container_with_custom_template_and_dependencies {
     # Function to display input dialog and capture user input
     function get_input {
         local title="$1"
@@ -125,46 +102,24 @@ function create_container_with_turnkey_core_and_steamcmd {
         echo "Existing container with ID $CT_ID found and destroyed."
     fi
 
-    # Download TurnKey Core Debian 12 template if not already available
-    pveam available | grep "turnkey-core-debian-12-default" &>/dev/null
-    if [ $? -ne 0 ]; then
-        echo "Downloading TurnKey Core Debian 12 template..."
-        pveam download local turnkey-core-debian-12-default
-    else
-        echo "TurnKey Core Debian 12 template is already available."
-    fi
-
-    # Create LXC container using the downloaded template
-    echo "Creating LXC container with TurnKey Core Debian 12..."
-    show_loading &
-    local loading_pid=$!
-    if [ "$DHCP" == "yes" ]; then
-        pct create $CT_ID turnkey-core-debian-12-default --hostname $HOSTNAME --storage $STORAGE --password $PASSWORD --cores $CORE_COUNT --memory $RAM_SIZE --net0 name=eth0,bridge=vmbr0,ip=dhcp &>/dev/null
-    else
-        pct create $CT_ID turnkey-core-debian-12-default --hostname $HOSTNAME --storage $STORAGE --password $PASSWORD --cores $CORE_COUNT --memory $RAM_SIZE --net0 name=eth0,bridge=vmbr0,ip=$IP_ADDRESS &>/dev/null
-    fi
-    stop_loading $loading_pid
+    # Create LXC container using the custom template
+    echo "Creating LXC container with custom template..."
+    pct create $CT_ID <path_to_your_custom_template>/debian-12-turnkey-core_18.0-1_amd64.tar.gz --hostname $HOSTNAME --storage $STORAGE --password $PASSWORD --cores $CORE_COUNT --memory $RAM_SIZE --net0 name=eth0,bridge=vmbr0,ip=$IP_ADDRESS
     echo "LXC container created successfully."
 
     # Start the container
     echo "Starting the container..."
-    show_loading &
-    loading_pid=$!
-    pct start $CT_ID &>/dev/null
-    stop_loading $loading_pid
+    pct start $CT_ID
     echo "Container started successfully."
 
-    # Install SteamCMD inside the container
-    echo "Installing SteamCMD..."
-    show_loading &
-    loading_pid=$!
-    pct exec $CT_ID -- apt-get update &>/dev/null
-    pct exec $CT_ID -- apt-get install -y steamcmd &>/dev/null
-    stop_loading $loading_pid
-    echo "SteamCMD installed successfully."
+    # Install dependencies inside the container
+    echo "Installing dependencies inside the container..."
+    pct exec $CT_ID -- apt-get update
+    pct exec $CT_ID -- apt-get install -y curl sudo
+    echo "Dependencies installed successfully inside the container."
 
     echo "All steps completed successfully."
 }
 
-# Call the function to create LXC container with TurnKey Core Debian 12 and install SteamCMD
-create_container_with_turnkey_core_and_steamcmd
+# Call the function to create LXC container with custom template and install dependencies
+create_container_with_custom_template_and_dependencies
