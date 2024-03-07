@@ -7,36 +7,29 @@ fetch_game_name() {
     echo "$GAME_NAME"
 }
 
+# Function to check if a command executed successfully
+check_command_status() {
+    if [ $? -ne 0 ]; then
+        echo "Error: $1 failed."
+        exit 1
+    fi
+}
+
 # Update and upgrade system
 apt update
-apt dist-upgrade -y
+check_command_status "apt update"
+
+apt dist-upgrade
+check_command_status "apt dist-upgrade"
 
 # Install required packages
-apt install -y software-properties-common
-apt-add-repository non-free
-dpkg --add-architecture i386
-apt update
-apt install -y steamcmd
+apt install software-properties-common jq openssh-server vsftpd -y
+check_command_status "apt install"
 
 # Install sudo if not already installed
 if ! command -v sudo &>/dev/null; then
-    apt install -y sudo
-fi
-
-# Prompt for SSH installation
-read -p "Do you want to install SSH? [Y/n]: " INSTALL_SSH
-INSTALL_SSH=${INSTALL_SSH:-Y}
-
-if [[ $INSTALL_SSH =~ ^[Yy]$ ]]; then
-    apt install -y openssh-server
-fi
-
-# Prompt for FTP installation
-read -p "Do you want to install FTP? [Y/n]: " INSTALL_FTP
-INSTALL_FTP=${INSTALL_FTP:-Y}
-
-if [[ $INSTALL_FTP =~ ^[Yy]$ ]]; then
-    apt install -y vsftpd
+    apt install sudo -y
+    check_command_status "apt install sudo"
 fi
 
 # Prompt for steam user password
@@ -64,5 +57,6 @@ DST_LOCATION=${DST_LOCATION:-$DEFAULT_LOCATION}
 # Switch to steam user and set up SteamCMD
 sudo -u steam -s <<EOF
 cd /home/steam
+echo "Updating Don't Starve Together..."
 /usr/games/steamcmd +login anonymous +app_update $APP_ID validate +quit
 EOF
