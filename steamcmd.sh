@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Function to install necessary dependencies
 function install_dependencies {
@@ -103,9 +103,16 @@ function create_container_with_custom_template_and_dependencies {
     apt-get -y upgrade &>/dev/null
     echo "System updated."
 
-    # Create LXC container using the downloaded template
+    # Select LXC template
+    LXC_TEMPLATE=$(pct list templates | grep -i "$SEARCH_TERM" | cut -d' ' -f1 | whiptail --menu "Select LXC template:" 15 78 4 3>&1 1>&2 2>&3)
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+    echo "LXC Template: $LXC_TEMPLATE"
+
+    # Create LXC container using the selected template
     echo "Creating LXC container..."
-    pct create $CT_ID "debian-12-turnkey-core_18.0-1_amd64.tar.gz" --hostname $HOSTNAME --storage $STORAGE --password $PASSWORD --cores $CORE_COUNT --memory $RAM_SIZE --net0 $NET --ipconfig0 $IP_ADDRESS
+    pct create $CT_ID "$LXC_TEMPLATE" --hostname $HOSTNAME --storage $STORAGE --password $PASSWORD --cores $CORE_COUNT --memory $RAM_SIZE --net0 $NET --ipconfig0 $IP_ADDRESS
     echo "LXC container created."
 
     # Start the container
@@ -113,20 +120,77 @@ function create_container_with_custom_template_and_dependencies {
     pct start $CT_ID
     echo "LXC container started."
 
+    # Wait for container to start
+    sleep 5
+
+    # Check if DHCP is not selected
+    if [ "$DHCP" != "yes" ]; then
+        # Configure static IP
+        echo "Configuring static IP..."
+        pct exec $CT_ID ip addr add $IP_ADDRESS/24 dev eth0
+        pct exec $CT_ID ip route add default via 192.168.1.1
+        echo "Static IP configured."
+    fi
+
+    # Install SSH server
+    echo "Installing SSH server..."
+    pct exec $CT_ID apt-get update
+    pct exec $CT_ID apt-get install -y openssh-server
+    pct exec $CT_ID systemctl enable ssh
+    pct exec $CT_ID systemctl start ssh
+    echo "SSH server installed."
+
+    # Ask user for FTP installation
+    FTP_SELECTION=$(whiptail --menu "Select FTP installation:" 15 78 2 "FTP" "Install FTP" "None" "Do not install FTP" 3>&1 1>&2 2>&3)
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+    echo "FTP Selection: $FTP_SELECTION"
+
+    # Check if FTP is selected
+    if [ "$FTP_SELECTION" == "FTP" ]; then
+        # Get user input for FTP port
+        FTP_PORT=$(get_input "FTP Port" "Enter the FTP port:" "21")
+        if [ $? -ne 0 ]; then
+            exit 1
+        fi
+        echo "FTP Port: $FTP_PORT"
+
+        # Install FTP server
+        echo "Installing FTP server..."
+        pct exec $CT_ID apt-get install -y ftpd
+        pct exec $CT_ID sed -i "s/listen=NO/listen=YES/" /etc/vsftpd.conf
+        pct exec $CT_ID sed -i "s/#listen_ipv6=YES/listen_ipv6=NO/" /etc/vsftpd.conf
+        pct exec $CT_ID sed -i "s/listen_port=21/listen_port=$FTP_PORT/" /etc/vsftpd.conf
+        pct exec $CT_ID systemctl enable ftpd
+        pct exec $CT_ID systemctl start ftpd
+        echo "FTP server installed."
+    fi
+
     # Output summary
     echo "-------------------------"
     echo "Container ID: $CT_ID"
     echo "Hostname: $HOSTNAME"
-    if [ "$DHCP" != "yes" ]; then
-        echo "IP Address: $IP_ADDRESS"
-    else
-        echo "Network Configuration: DHCP"
-    fi
-    echo "Root Password: ********"
+    echo "Storage: $STORAGE"
+    echo "Root Password: $PASSWORD"
     echo "CPU Cores: $CORE_COUNT"
     echo "RAM Size: $RAM_SIZE MB"
-    echo "Storage: $STORAGE"
+    if [ "$DHCP" == "yes" ]; then
+        echo "IP Address: DHCP"
+    else
+        echo "IP Address: $IP_ADDRESS"
+    fi
+    if [ "$SSH_STATUS" == "active" ]; then
+        echo "SSH Access: Enabled (username: root, port: 22)"
+    else
+        echo "SSH Access: Disabled"
+    fi
+    if [ "$FTP_SELECTION" == "FTP" ]; then
+        echo "FTP Access: Enabled (username: root, port: $FTP_PORT)"
+    else
+        echo "FTP Access: Disabled"
+    fi
 }
 
-# Call the function to create LXC container with custom template and install dependencies
+# Run the function to create container
 create_container_with_custom_template_and_dependencies
