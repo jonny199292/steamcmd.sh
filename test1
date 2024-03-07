@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+function header_info {
+    clear
+    cat <<"EOF"
+    ____             __
+   / __ \____  _____/ /_  __  _____
+  / / / / __ \/ ___/ //_/ _ \/ ___/
+ / /_/ / /_/ / /__/ ,< /  __/ /
+/_____/\____/\___/_/|_|\___/_/
+
+EOF
+}
+header_info
+echo -e "Loading..."
+
+# Function to select storage
+function select_storage() {
+    local STORAGE
+    echo "Select storage:"
+    select STORAGE in "storage1" "storage2" "storage3"; do
+        case $STORAGE in
+            storage1|storage2|storage3)
+                echo "Selected storage: $STORAGE"
+                break
+                ;;
+            *)
+                echo "Invalid selection. Please try again."
+                ;;
+        esac
+    done
+}
+
+# Function to create LXC container
+function create_container() {
+    echo "Creating LXC container..."
+    # Insert your code to create LXC container here
+}
+
+# Function to install SSH server
+function install_ssh() {
+    echo "Installing SSH server..."
+    # Insert your code to install SSH server here
+}
+
+# Function to install FTP server
+function install_ftp() {
+    echo "Installing FTP server..."
+    # Insert your code to install FTP server here
+}
+
+# Function to start services
+function start_services() {
+    echo "Starting services..."
+    # Insert your code to start services here
+}
+
+# Function to display summary
+function display_summary() {
+    echo "Summary:"
+    # Insert your code to display summary here
+}
+
+# Main function
+function main() {
+    # Select storage
+    select_storage
+
+    # Create LXC container
+    create_container
+
+    # Install SSH server
+    install_ssh
+
+    # Install FTP server
+    install_ftp
+
+    # Start services
+    start_services
+
+    # Display summary
+    display_summary
+
+    echo "Completed Successfully!"
+}
+
+# Execute main function
+main
