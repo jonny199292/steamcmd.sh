@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-
 source <(curl -s https://raw.githubusercontent.com/tteck/Proxmox/main/misc/build.func)
+# Copyright (c) 2021-2024 tteck
+# Author: tteck (tteckster)
+# License: MIT
+# https://github.com/tteck/Proxmox/raw/main/LICENSE
 
 function header_info {
-    clear
-    cat <<"EOF"
+clear
+cat <<"EOF"
     ____       __    _           
    / __ \___  / /_  (_)___ _____ 
   / / / / _ \/ __ \/ / __ `/ __ \
@@ -13,7 +16,6 @@ function header_info {
                                  
 EOF
 }
-
 header_info
 echo -e "Loading..."
 APP="Debian"
@@ -47,7 +49,7 @@ function default_settings() {
   VLAN=""
   SSH="no"
   VERB="no"
-  STEAMCMD_INSTALL="no"
+  STEAMCMD_INSTALL="no"  # Initialize STEAMCMD_INSTALL here
   STEAMCMD_APP_ID=""
   STEAMCMD_DOWNLOAD_LOCATION=""
   STEAMCMD_INSTALL_LOCATION=""
@@ -57,73 +59,17 @@ function default_settings() {
 }
 
 function update_script() {
-  header_info
-  if [[ ! -d /var ]]; then 
-    msg_error "No ${APP} Installation Found!"
-    exit
-  fi
-  msg_info "Updating $APP LXC"
-  apt-get update &>/dev/null
-  apt-get -y upgrade &>/dev/null
-  msg_ok "Updated $APP LXC"
-  exit
+header_info
+if [[ ! -d /var ]]; then msg_error "No ${APP} Installation Found!"; exit; fi
+msg_info "Updating $APP LXC"
+apt-get update &>/dev/null
+apt-get -y upgrade &>/dev/null
+msg_ok "Updated $APP LXC"
+exit
 }
 
-function build_container_with_services() {
-  start
-  build_container
-  install_steamcmd
-  install_ssh
-  install_ftp
-  description
-  report_services
-}
-
-function install_steamcmd() {
-  if [[ "$STEAMCMD_INSTALL" == "yes" ]]; then
-    msg_info "Installing SteamCMD"
-    # Download and install SteamCMD
-    # You need to replace the placeholders with actual commands
-    # Example:
-    # wget -qO- https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz | tar zxvf -
-    # mkdir -p $STEAMCMD_INSTALL_LOCATION
-    # mv steamcmd $STEAMCMD_INSTALL_LOCATION
-    msg_ok "Installed SteamCMD"
-  fi
-}
-
-function install_ssh() {
-  if [[ "$SSH_INSTALL" == "yes" ]]; then
-    msg_info "Installing SSH"
-    # Install SSH service
-    apt-get install -y openssh-server &>/dev/null
-    msg_ok "Installed SSH"
-  fi
-}
-
-function install_ftp() {
-  if [[ "$FTP_INSTALL" == "yes" ]]; then
-    msg_info "Installing FTP"
-    # Install FTP service
-    apt-get install -y vsftpd &>/dev/null
-    msg_ok "Installed FTP"
-  fi
-}
-
-function report_services() {
-  if [[ "$SSH_INSTALL" == "yes" || "$FTP_INSTALL" == "yes" ]]; then
-    echo -e "\n"
-    if [[ "$SSH_INSTALL" == "yes" ]]; then
-      msg_ok "SSH service is installed."
-      msg_ok "SSH is accessible via IP address and port 22."
-    fi
-    if [[ "$FTP_INSTALL" == "yes" ]]; then
-      msg_ok "FTP service is installed."
-      msg_ok "FTP is accessible via IP address and port 21."
-    fi
-  fi
-}
-
-build_container_with_services
+start
+build_container
+description
 
 msg_ok "Completed Successfully!\n"
