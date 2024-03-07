@@ -11,14 +11,11 @@ fetch_game_name() {
 apt update && apt dist-upgrade -y
 
 # Install required packages
-apt install software-properties-common && \
-apt install jq && \
-apt install openssh-server && \
-apt install vsftpd
+apt install -y software-properties-common jq openssh-server vsftpd
 
 # Install sudo if not already installed
 if ! command -v sudo &>/dev/null; then
-    apt install sudo -y
+    apt install -y sudo
 fi
 
 # Check if the 'steam' user exists
