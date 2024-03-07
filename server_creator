@@ -11,7 +11,7 @@ fetch_game_name() {
 apt update && apt dist-upgrade -y || { echo "Error: Failed to update and upgrade the system"; exit 1; }
 
 # Install required packages
-apt install -y software-properties-common jq openssh-server vsftpd || { echo "Error: Failed to install required packages"; exit 1; }
+apt install -y software-properties-common jq openssh-server vsftpd expect || { echo "Error: Failed to install required packages"; exit 1; }
 
 # Install sudo if not already installed
 if ! command -v sudo &>/dev/null; then
@@ -29,6 +29,9 @@ if ! id -u steam &>/dev/null; then
     echo "steam:$STEAM_PASSWORD" | chpasswd || { echo "Error: Failed to set password for steam user"; exit 1; }
 fi
 
+# Set default installation location
+DEFAULT_LOCATION="/home/steam/steamapps"
+
 # Prompt for Don't Starve Together App ID
 read -p "Enter Don't Starve Together App ID [default: 322330]: " APP_ID
 APP_ID=${APP_ID:-322330}
@@ -36,19 +39,17 @@ APP_ID=${APP_ID:-322330}
 # Fetch game name
 GAME_NAME=$(fetch_game_name "$APP_ID")
 
-# Set default installation location
-DEFAULT_LOCATION="/home/steam/steamapps/$GAME_NAME"
-
 # Prompt for DST installation location
-read -p "Enter Don't Starve Together installation directory [default: $DEFAULT_LOCATION]: " DST_LOCATION
-DST_LOCATION=${DST_LOCATION:-$DEFAULT_LOCATION}
+read -p "Enter Don't Starve Together installation directory [default: $DEFAULT_LOCATION/$GAME_NAME]: " DST_LOCATION
+DST_LOCATION=${DST_LOCATION:-"$DEFAULT_LOCATION/$GAME_NAME"}
 
-# Switch to steam user and set up SteamCMD
-sudo -u steam -s <<EOF || { echo "Error: Failed to set up SteamCMD"; exit 1; }
-cd /home/steam
-echo "Updating Don't Starve Together..."
-/usr/games/steamcmd +login anonymous +app_update $APP_ID validate +quit
-EOF
+# Run Steam commands as steam user with provided password
+su -c "expect -c '
+spawn /usr/games/steamcmd +login anonymous +force_install_dir \"$DST_LOCATION\" +app_update $APP_ID validate +quit
+expect \"Password:\"
+send \"$STEAM_PASSWORD\r\"
+interact
+'" steam" || { echo "Error: Failed to set up SteamCMD"; exit 1; }
 
 # Report success
 echo "Script execution completed successfully."
