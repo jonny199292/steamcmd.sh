@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Function to install necessary dependencies
 function install_dependencies {
@@ -97,105 +97,35 @@ function create_container_with_custom_template_and_dependencies {
         echo "IP Address: $IP_ADDRESS"
     fi
 
-    # Ask user for SSH installation
-    SSH_SELECTION=$(whiptail --menu "Select SSH installation:" 15 78 2 "SSH" "Install SSH" "None" "Do not install SSH" 3>&1 1>&2 2>&3)
-    if [ $? -ne 0 ]; then
-        exit 1
-    fi
-    echo "SSH Selection: $SSH_SELECTION"
+    # Update and upgrade the system
+    echo "Updating system..."
+    apt-get update &>/dev/null
+    apt-get -y upgrade &>/dev/null
+    echo "System updated."
 
-    # Check if SSH is selected
-    if [ "$SSH_SELECTION" == "SSH" ]; then
-        # Get user input for SSH port
-        SSH_PORT=$(get_input "SSH Port" "Enter the SSH port:" "22")
-        if [ $? -ne 0 ]; then
-            exit 1
-        fi
-        echo "SSH Port: $SSH_PORT"
+    # Create LXC container using the downloaded template
+    echo "Creating LXC container..."
+    pct create $CT_ID "debian-12-turnkey-core_18.0-1_amd64.tar.gz" --hostname $HOSTNAME --storage $STORAGE --password $PASSWORD --cores $CORE_COUNT --memory $RAM_SIZE --net0 $NET --ipconfig0 $IP_ADDRESS
+    echo "LXC container created."
 
-        # Install SSH server
-        echo "Installing SSH server..."
-        pct exec $CT_ID -- apt-get update
-        pct exec $CT_ID -- apt-get install -y openssh-server
-        pct exec $CT_ID -- sed -i "s/#Port 22/Port $SSH_PORT/" /etc/ssh/sshd_config
-        echo "SSH server installed."
-    fi
-
-    # Check if DHCP is not selected
-    if [ "$DHCP" != "yes" ]; then
-        # Configure static IP
-        echo "Configuring static IP..."
-        pct exec $CT_ID -- ip addr add $IP_ADDRESS/24 dev eth0
-        pct exec $CT_ID -- ip route add default via 192.168.1.1
-        echo "Static IP configured."
-    fi
-
-    # Ask user for FTP installation
-    FTP_SELECTION=$(whiptail --menu "Select FTP installation:" 15 78 2 "FTP" "Install FTP" "None" "Do not install FTP" 3>&1 1>&2 2>&3)
-    if [ $? -ne 0 ]; then
-        exit 1
-    fi
-    echo "FTP Selection: $FTP_SELECTION"
-
-    # Check if FTP is selected
-    if [ "$FTP_SELECTION" == "FTP" ]; then
-        # Get user input for FTP port
-        FTP_PORT=$(get_input "FTP Port" "Enter the FTP port:" "21")
-        if [ $? -ne 0 ]; then
-            exit 1
-        fi
-        echo "FTP Port: $FTP_PORT"
-
-        # Install FTP server
-        echo "Installing FTP server..."
-        pct exec $CT_ID -- apt-get update
-        pct exec $CT_ID -- apt-get install -y ftpd
-        pct exec $CT_ID -- sed -i "s/listen=NO/listen=YES/" /etc/vsftpd.conf
-        pct exec $CT_ID -- sed -i "s/#listen_ipv6=YES/listen_ipv6=NO/" /etc/vsftpd.conf
-        pct exec $CT_ID -- sed -i "s/listen_port=21/listen_port=$FTP_PORT/" /etc/vsftpd.conf
-        echo "FTP server installed."
-    fi
-
-    # Check if Steam service is running
-    STEAM_STATUS=$(pct exec $CT_ID -- systemctl is-active steam)
-    if [ "$STEAM_STATUS" == "active" ]; then
-        echo "Steam service is running."
-    else
-        echo "Steam service is not running."
-    fi
-
-    # Check if SSH service is running
-    SSH_STATUS=$(pct exec $CT_ID -- systemctl is-active ssh)
-    if [ "$SSH_STATUS" == "active" ]; then
-        echo "SSH service is running."
-    else
-        echo "SSH service is not running."
-    fi
-
-    # Check if FTP service is running
-    FTP_STATUS=$(pct exec $CT_ID -- systemctl is-active ftpd)
-    if [ "$FTP_STATUS" == "active" ]; then
-        echo "FTP service is running."
-    else
-        echo "FTP service is not running."
-    fi
+    # Start the container
+    echo "Starting LXC container..."
+    pct start $CT_ID
+    echo "LXC container started."
 
     # Output summary
     echo "-------------------------"
     echo "Container ID: $CT_ID"
     echo "Hostname: $HOSTNAME"
-    echo "IP Address: $IP_ADDRESS"
-    echo "Root Password: $PASSWORD"
-    if [ "$SSH_SELECTION" == "SSH" ]; then
-        echo "SSH Access: Enabled (username: root, port: $SSH_PORT)"
+    if [ "$DHCP" != "yes" ]; then
+        echo "IP Address: $IP_ADDRESS"
     else
-        echo "SSH Access: Disabled"
+        echo "Network Configuration: DHCP"
     fi
-    if [ "$FTP_SELECTION" == "FTP" ]; then
-        echo "FTP Access: Enabled (username: root, port: $FTP_PORT)"
-    else
-        echo "FTP Access: Disabled"
-    fi
+    echo "Root Password: ********"
+    echo "CPU Cores: $CORE_COUNT"
+    echo "RAM Size: $RAM_SIZE MB"
+    echo "Storage: $STORAGE"
 }
 
 # Call the function to create LXC container with custom template and install dependencies
