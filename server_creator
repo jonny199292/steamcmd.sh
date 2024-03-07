@@ -7,38 +7,30 @@ fetch_game_name() {
     echo "$GAME_NAME"
 }
 
-# Function to check if a command executed successfully
-check_command_status() {
-    if [ $? -ne 0 ]; then
-        echo "Error: $1 failed."
-        exit 1
-    fi
-}
-
 # Update and upgrade system
-apt update
-check_command_status "apt update"
-
-apt dist-upgrade
-check_command_status "apt dist-upgrade"
+apt update && apt dist-upgrade -y
 
 # Install required packages
-apt install software-properties-common jq openssh-server vsftpd -y
-check_command_status "apt install"
+apt install software-properties-common && \
+apt install jq && \
+apt install openssh-server && \
+apt install vsftpd
 
 # Install sudo if not already installed
 if ! command -v sudo &>/dev/null; then
     apt install sudo -y
-    check_command_status "apt install sudo"
 fi
 
-# Prompt for steam user password
-read -s -p "Enter password for steam user: " STEAM_PASSWORD
-echo
+# Check if the 'steam' user exists
+if ! id -u steam &>/dev/null; then
+    # Prompt for steam user password
+    read -s -p "Enter password for steam user: " STEAM_PASSWORD
+    echo
 
-# Create steam user and set password
-useradd -m steam
-echo "$STEAM_PASSWORD" | passwd steam --stdin
+    # Create steam user and set password
+    useradd -m steam
+    echo "steam:$STEAM_PASSWORD" | chpasswd
+fi
 
 # Prompt for Don't Starve Together App ID
 read -p "Enter Don't Starve Together App ID [default: 322330]: " APP_ID
